@@ -29,7 +29,7 @@ os — file handling
 1. Clone this repository
 bash
 Copy code
-git clone https://github.com/yourusername/sperm-quality-tester.git
+git clone https://github.com/noman922/lecture0/blob/master/Sperms%20Quality%20Test
 cd sperm-quality-tester
 2. Install dependencies
 bash
