@@ -1,0 +1,158 @@
+import random  # For generating sample data with variability
+import matplotlib.pyplot as plt  # For visualizing scores (install if needed: pip install matplotlib)
+import os  # For file operations
+
+def validate_inputs(conc, mot, morph):
+    """
+    Validates input parameters to ensure they are non-negative and within realistic ranges.
+    Returns True if valid, else raises ValueError with a message.
+    """
+    if conc < 0 or mot < 0 or morph < 0:
+        raise ValueError("All values must be non-negative.")
+    if conc > 200 or mot > 100 or morph > 100:
+        raise ValueError("Values seem unrealistic (e.g., concentration >200 million/mL or percentages >100%).")
+    return True
+
+def calculate_individual_scores(conc, mot, morph, thresholds):
+    """
+    Calculates individual scores (0-100) for each parameter based on thresholds.
+    Adds slight random variability to simulate measurement errors in real labs.
+    """
+    # Introduce small random noise (±5%) to make each run unique
+    noise = lambda x: x * random.uniform(0.95, 1.05)
+    
+    conc_score = min(100, (noise(conc) / thresholds['conc']) * 100) if conc > 0 else 0
+    mot_score = min(100, (noise(mot) / thresholds['mot']) * 100)
+    morph_score = min(100, (noise(morph) / thresholds['morph']) * 100)
+    
+    return conc_score, mot_score, morph_score
+
+def classify_fertility(quality_score):
+    """
+    Classifies fertility potential based on the composite score.
+    Based on general fertility research (e.g., scores >70 often indicate higher pregnancy rates).
+    """
+    if quality_score >= 80:
+        return "High (Excellent chance of fertility)"
+    elif quality_score >= 60:
+        return "Moderate (Good potential, may need lifestyle adjustments)"
+    elif quality_score >= 40:
+        return "Low (Potential issues; consult a specialist)"
+    else:
+        return "Very Low (Significant concerns; medical evaluation recommended)"
+
+def assess_sperm_quality(conc, mot, morph, thresholds=None, visualize=False):
+    """
+    Assesses sperm quality with enhanced features.
+    - Calculates scores with variability.
+    - Generates a report and optional visualization.
+    - Returns score, report, and fertility classification.
+    
+    Parameters:
+    - conc, mot, morph: Float values for concentration, motility, morphology.
+    - thresholds: Dict of min values (default: WHO-based).
+    - visualize: Bool to show a bar chart of scores.
+    """
+    if thresholds is None:
+        thresholds = {'conc': 15, 'mot': 40, 'morph': 4}  # WHO 2021 defaults
+    
+    validate_inputs(conc, mot, morph)  # Ensure valid inputs
+    
+    # Get scores with variability
+    conc_score, mot_score, morph_score = calculate_individual_scores(conc, mot, morph, thresholds)
+    
+    # Weighted composite score (motility weighted higher as per fertility studies)
+    weights = {'conc': 0.3, 'mot': 0.4, 'morph': 0.3}
+    quality_score = (conc_score * weights['conc'] + mot_score * weights['mot'] + morph_score * weights['morph'])
+    
+    # Fertility classification
+    fertility_class = classify_fertility(quality_score)
+    
+    # Generate report
+    report = f"""
+    Sperm Quality Assessment Report:
+    - Concentration: {conc:.1f} million/mL (Score: {conc_score:.1f}/100)
+    - Motility: {mot:.1f}% (Score: {mot_score:.1f}/100)
+    - Morphology: {morph:.1f}% (Score: {morph_score:.1f}/100)
+    - Overall Quality Score: {quality_score:.1f}/100
+    - Fertility Potential: {fertility_class}
+    - Thresholds Used: Conc >{thresholds['conc']}, Mot >{thresholds['mot']}, Morph >{thresholds['morph']}
+    """
+    
+    # Optional visualization
+    if visualize:
+        labels = ['Concentration', 'Motility', 'Morphology']
+        scores = [conc_score, mot_score, morph_score]
+        plt.bar(labels, scores, color=['blue', 'green', 'red'])
+        plt.ylim(0, 100)
+        plt.title(f'Sperm Quality Scores (Overall: {quality_score:.1f})')
+        plt.ylabel('Score (0-100)')
+        plt.show()  # Displays the chart
+    
+    return quality_score, report.strip(), fertility_class
+
+def save_report_to_file(report, filename="sperm_report.txt"):
+    """
+    Saves the report to a text file in the current directory.
+    Appends if file exists.
+    """
+    with open(filename, 'a') as f:
+        f.write(report + "\n\n")
+    print(f"Report saved to {filename}")
+
+# Main interactive loop for uniqueness and usability
+if __name__ == "__main__":
+    history = []  # List to store past assessments
+    
+    print("Welcome to the Unique Sperm Quality Tester!")
+    print("This tool simulates assessments. Enter real data for accuracy, or use samples.")
+    
+    while True:
+        try:
+            # User input
+            print("\nOptions: 1) Enter data, 2) Generate random sample, 3) View history, 4) Exit")
+            choice = input("Choose: ").strip()
+            
+            if choice == "1":
+                conc = float(input("Concentration (million/mL): "))
+                mot = float(input("Motility (%): "))
+                morph = float(input("Morphology (%): "))
+                viz = input("Visualize chart? (y/n): ").lower() == 'y'
+                score, report, fert = assess_sperm_quality(conc, mot, morph, visualize=viz)
+                print(report)
+                history.append((score, fert))
+                if input("Save report? (y/n): ").lower() == 'y':
+                    save_report_to_file(report)
+            
+            elif choice == "2":
+                # Generate unique random sample with variability
+                conc = random.uniform(5, 50)
+                mot = random.uniform(10, 80)
+                morph = random.uniform(1, 10)
+                print(f"Generated sample: Conc={conc:.1f}, Mot={mot:.1f}, Morph={morph:.1f}")
+                viz = input("Visualize chart? (y/n): ").lower() == 'y'
+                score, report, fert = assess_sperm_quality(conc, mot, morph, visualize=viz)
+                print(report)
+                history.append((score, fert))
+                if input("Save report? (y/n): ").lower() == 'y':
+                    save_report_to_file(report)
+            
+            elif choice == "3":
+                if not history:
+                    print("No history yet.")
+                else:
+                    print("History Summary:")
+                    for i, (s, f) in enumerate(history, 1):
+                        print(f"{i}. Score: {s:.1f}, Fertility: {f}")
+            
+            elif choice == "4":
+                print("Exiting. Stay healthy!")
+                break
+            
+            else:
+                print("Invalid choice.")
+        
+        except ValueError as e:
+            print(f"Error: {e}. Try again.")
+        except Exception as e:
+            print(f"Unexpected error: {e}. Restarting loop.")
